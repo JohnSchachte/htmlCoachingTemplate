@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+
+  <!-- DataTables Bootstrap 5 CSS -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.0/css/buttons.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css"
+    href="https://cdn.datatables.net/searchpanes/1.3.0/css/searchPanes.dataTables.min.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.6.2/css/select.bootstrap5.min.css">
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- DataTables -->
+  <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.11.3/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- DataTables Buttons -->
+  <script src="https://cdn.datatables.net/buttons/2.2.0/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.2.0/js/buttons.bootstrap5.min.js"></script>
+
+  <!-- Required for the PDF button. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.2.0/js/buttons.html5.min.js"></script>
+
+  <!-- DataTables Other Plugins -->
+  <script src="https://cdn.datatables.net/searchpanes/2.1.2/js/dataTables.searchPanes.min.js"></script>
+  <script src="https://cdn.datatables.net/searchpanes/2.1.2/js/searchPanes.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/select/1.6.2/js/dataTables.select.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.2/moment.min.js"></script>
+  <script src="https://cdn.datatables.net/datetime/1.4.1/js/dataTables.dateTime.min.js"></script>
+
+
+
+  <!--INCLUDE js.html FILE-->
+  <?!= include('js'); ?>-
+  <div id="buttonNames" style="display: none;"><?= buttons ?></div>
+  <div id="buttonHeaders" style="display: none;"><?= butcol ?></div>
+
+
+  <nav class="navbar navbar-dark align-items-center" style="background-color: black;">
+    <a class="navbar-brand text-white" href="#">
+      <img src="https://www.shift4.com/images/icons/nav-main-logo.svg" width="150" height="50" class="d-inline-block align-center mx-3" alt="">
+      <span id="title"><?= title ?></span>
+    </a>
+     <!-- Dropdown -->
+    <div class="dropdown">
+      <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+        Navigate Sheets
+      </button>
+      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton" id="dropdown-menu">
+        <!-- Dropdown items will be added here -->
+      </ul>
+    </div>
+  </nav>
+
+</head>
+
+
+<body>
+
+  <div id="loader"
+    style="position: fixed; height: 100vh; width: 100vw; top: 0;left: 0;right: 0;bottom: 0;z-index: 99999; display:none">
+    <div
+      style=" position: fixed; width: 100%;height:100%; display: flex;align-items: center;justify-content: center;background: rgba(0, 0, 0, 0.5);">
+      <div style="width: 100%;height:100%; display: flex;align-items: center;justify-content: center;">
+        <div style="text-align: center;">
+          <div style="width: 4rem; height: 4rem;" class="spinner-border text-primary" role="status">
+          </div>
+          <div class="text-white font-weight-bold pt-1">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="failloader"
+    style="position: fixed; height: 100vh; width: 100vw; top: 0;left: 0;right: 0;bottom: 0;z-index: 99999; display:none">
+    <div
+      style=" position: fixed; width: 100%;height:100%; display: flex;align-items: center;justify-content: center;background: rgba(0, 0, 0, 0.5);">
+      <div style="width: 100%;height:100%; display: flex;align-items: center;justify-content: center;">
+        <div style="text-align: center;">
+          <div><i class='fas fa-exclamation-triangle text-danger' style='font-size:48px;'></i></div>
+          <div class="text-white font-weight-bold pt-1">
+            <h5>Error!</h5>
+            <div id="failreason"></div>
+          </div>
+          <div class="pt-1">
+            <button type="button" class="btn btn-outline-danger" onclick="hideError();">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <div class="container-fluid my-1" id="dateFilterContainer" style="display: none; overflow: hidden;">
+    <div class="form-group row justify-content-center" style="overflow-x:auto;">
+      <div class="col m-1">
+        <h6 class="dropdown-header text-center" id="startdate-header">
+          Start Date</h6>
+        <input type='date' class="form-control bg-light" id="min" name="min" value="" min="1899-12-31" max="3999-12-31">
+      </div>
+      <div class="col m-1">
+        <h6 class="dropdown-header text-center" id="enddate-header">
+          End Date</h6>
+        <div class="input-group">
+          <input type='date' class="form-control bg-light" id="max" name="max" value="" min="1899-12-31" max="3999-12-31">
+          <div class="input-group-append mx-1">
+            <button type="button" class="btn btn-primary" id="add-filter" onclick="addDateFilter();return false;">Apply</button>
+            <button type="button" class="btn btn-outline-primary" id="remove-filter" onclick="resetFilter();return false;">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <div class="col my-3 mx-3 justify-content-center" style="overflow-x:auto;">
+      <table width="100%" id="data-table"
+        class="table table-responsive w-auto table-striped table-sm table-hover table-bordered">
+        <!-- Table data is populated by showData() function -->
+      </table>
+    </div>
+
+
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous">
+    </script>
+
+
+
+</body>
+
+</html>

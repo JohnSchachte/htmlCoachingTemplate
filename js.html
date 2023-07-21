@@ -1,0 +1,435 @@
+<script>
+  // When page is ready load the data from the server
+  $(document).ready(function() {
+    $("#loader").show(); // Show loader
+    console.log("about to get data");
+    var titleText = $("#title").text();
+    google.script.run
+        .withSuccessHandler(onSuccessGetData)
+        .withFailureHandler(onFailure)
+        .getData(titleText); // Call the server-side function to get the updated data
+    google.script.run.withSuccessHandler(buildDropdown)
+    .getNavigationDropDown();
+  });
+  // This function builds the dropdown menu
+  function buildDropdown(options) {
+    var dropdownMenu = $('#dropdown-menu');
+    options.forEach(function(option) {
+      var item = $('<li><a class="dropdown-item" href="#">' + option + '</a></li>');
+      item.click(function() {
+        var url = 'https://script.google.com/a/macros/shift4.com/s/AKfycbzPiXxXIlqOzXdpIpc8EzR0DS0UyZmdyyIKwvH9dHMi/dev?sheet=' + option;
+        window.open(url, '_blank');
+      });
+      dropdownMenu.append(item);
+    });
+  }
+let logoDataURL;
+const logoURL = 'https://www.shift4.com/images/SHIFT4_Logo_RGB.svg';
+const img = new Image();
+img.crossOrigin = 'anonymous';  // This tells the browser to request cross-origin access when trying to download the image data.
+img.onload = function () {
+    let canvas = document.createElement('canvas');
+    canvas.width = this.naturalWidth; // or 'width' if you want a special/scaled size
+    canvas.height = this.naturalHeight; // or 'height' if you want a special/scaled size
+
+    canvas.getContext('2d').drawImage(this, 0, 0);
+
+    // Get raw image data
+    logoDataURL = canvas.toDataURL('image/png');
+}
+img.src = logoURL;
+
+  //REF: https://datatables.net/forums/discussion/comment/145428/#Comment_145428
+  //REF: https://datatables.net/examples/styling/bootstrap4
+   //THIS FUNCTION GENERATE THE DATA TABLE FROM THE DATA ARRAY
+function showData(dataArray, searchPanesColumns) {
+   console.log("in showData");
+    let buttonText= $('#buttonNames').text();
+    let buttonHeaders= $('#buttonHeaders').text();
+    var buttonsArray = [
+        "pageLength",
+        {
+            text: "Reload",
+            action: function (e, dt, node, config) {
+                reloadTable();
+            },
+            className: "btn btn-secondary", // Add any CSS classes here for styling the button
+        },
+    ];
+    console.log("1");
+
+    if (searchPanesColumns) {
+        buttonsArray.push({
+            text: "Filters",
+            action: function (e, dt, node, config) {
+                dt.searchPanes.container().toggle();
+                $("#dateFilterContainer").toggle();
+            },
+            className: "btn btn-secondary", // Add any CSS classes here for styling the button
+        });
+    }
+    console.log("2");
+    console.log("searchPanesColumns: " + searchPanesColumns);
+    // console.log(dataArray);
+    // console.log(searchPanesColumns);
+    // console.log(buttonHeaders);
+    // console.log(buttonsArray);
+    // console.log(dataArray.slice(1))
+    var table = $("#data-table").DataTable({
+        responsive: true,
+        dom: "Bfrtip",
+        searchPanes: searchPanesColumns ? true : false,
+        data: dataArray.slice(1), // skip the header row
+        
+        columns: dataArray[0].map(function (title) {
+            // Add searchPane only for specified columns
+            // console.log(title);
+            if (searchPanesColumns && searchPanesColumns.includes(title)) {
+              console.log({ title: title, searchPanes: { show: true } })
+                return { title: title, searchPanes: { show: true } };
+            } else {
+            //   console.log({ title: title, searchPanes: { show: false } })
+                return { title: title, searchPanes: { show: false } };
+            }
+        }).concat([
+            {
+                "title": buttonHeaders, // header title for button column, change if needed
+                "data": null,
+                "defaultContent": "",
+                "render": function(data, type, row, meta) {
+                    return '<button class="btn btn-primary btn-sm" id="actionBtn-' + (meta.row + 1) + '" onclick="actionButton(' + (meta.row + 1) + ')">' + buttonText + '</button>';
+                },
+                "searchable": false
+            }
+        ]),
+        buttons: buttonsArray,
+    });
+    // console.log("3");
+
+    new $.fn.dataTable.Buttons(table, {
+        buttons: [
+            "copy",
+            {
+                extend: "csvHtml5",
+                filename: function () {
+                    return $("#title").text();
+                },
+            },
+            {
+                extend: "excelHtml5",
+                filename: function () {
+                    return $("#title").text();
+                },
+                title: function () {
+                    return $("#title").text();
+                }
+            },
+            {
+                extend: "pdfHtml5",
+                text: "PDF",
+                title: function () {
+                    return $("#title").text();
+                },
+                filename: function () {
+                    return $("#title").text();
+                },
+                orientation: "landscape",
+                pageSize: "A3",
+                exportOptions: {
+                    columns: ":visible",
+                },
+                customize: function (doc) {
+                    doc.styles.tableHeader = {
+                        color: "white",
+                        bold: true,
+                        fillColor: "#136ef6",
+                        alignment: "center",
+                    };
+                    var now = new Date();
+                    var dateTimeString = "As of: " + now.toLocaleString();
+
+                    doc.content.splice(1, 0, {
+                        margin: [0, 0, 0, 12],
+                        columns: [
+                            {
+                                image: logoDataURL,
+                                width: 150,
+                                height: 50,
+                                alignment: "left",
+                            },
+                            {
+                                text: dateTimeString,
+                                alignment: "right",
+                            },
+                        ],
+                    });
+                },
+            },
+            {
+                config: {
+                    cascadePanes: true,
+                    layout: "columns-5",
+                },
+            },
+        ],
+        columnDefs: [
+            {
+                targets: "_all",
+                defaultContent: "",
+            },
+        ],
+        dom: {
+            container: {
+                className: "btn-group float-end", // Add classes here for styling the button group container
+            },
+            button: {
+                className: "btn btn-secondary", // Add any CSS classes here for styling the button group
+            },
+        },
+    });
+    // console.log("4");
+
+    table.buttons(1, null).container().prependTo(table.table().container());
+    if (searchPanesColumns) {
+        table.searchPanes.container().prependTo(table.table().container());
+        table.searchPanes.container().resize();
+        table.searchPanes.container().hide();
+    }
+    // console.log("5");
+
+};
+
+  function unhideDiv() {
+    $("#filterdiv").show();
+  }
+
+  // Reload table function
+function reloadTable() {
+    // console.log("in reloadTable");
+    $("#loader").show(); // Show loader
+    // Call the server-side function to get the updated data
+    google.script.run
+      .withSuccessHandler(reloadData)
+      .withFailureHandler(onFailure)
+      .getData($("#title").text()); // call the server-side function to get the updated data
+};
+
+function getDateColumnIndices(table) {
+    // console.log("in getDateColumnIndices")
+    var dateColumnIndices = [];
+    table.columns().header().each(function (header, i) {
+        var headerText = $(header).html().toLowerCase();
+        if (headerText.includes('date') || headerText.includes('timestamp') || headerText.includes('date/time')) {
+            dateColumnIndices.push(i);
+        }
+    });
+    return dateColumnIndices;
+};
+
+function addDateFilter() {
+    // console.log("in addDateFilter")
+    var table = $("#data-table").DataTable();
+    var dateColumnIndices = getDateColumnIndices(table);
+
+    // Custom filtering function which will search data in column with 'Date' between two values
+    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        var minDate = moment($("#min").val(), "YYYY-MM-DD");
+        var maxDate = moment($("#max").val(), "YYYY-MM-DD");
+        var isDateInRange = false;
+
+        dateColumnIndices.forEach(function (index) {
+            var date = moment(data[index], "MM-DD-YYYY");
+            if (
+                (!minDate.isValid() && !maxDate.isValid()) ||
+                (!minDate.isValid() && date <= maxDate) ||
+                (minDate <= date && !maxDate.isValid()) ||
+                (minDate <= date && date <= maxDate)
+            ) {
+                isDateInRange = true;
+            }
+        });
+        return isDateInRange;
+    });
+    table.draw();
+};
+
+  function resetFilter() {
+    // console.log("in resetFilter");
+    // Clear the input fields
+    $("#min").val("");
+    $("#max").val("");
+
+    // Remove the filtering function from the DataTables extension
+    var table = $("#data-table").DataTable();
+    $.fn.dataTable.ext.search.pop();
+
+    // Redraw the table
+    table.draw();
+  }
+
+// Hide error div 
+function hideError(){
+$('#failloader').hide();
+reloadTable();
+};
+
+// Display error on failure 
+function onFailure(error){
+    // console.log("in onFailure");
+  $('#failreason').html(error.message);
+  $('#loader').hide();
+  $('#failloader').show();
+};
+
+// Display error on failure 
+function onSuccess(){
+    var table = $('#data-table').DataTable();
+    table.destroy().draw();
+};
+
+
+// action button based on row
+function actionButton(rowIndex) {
+    // console.log("in actionButton");
+  google.script.run
+    .withSuccessHandler(function(rowData) {
+      // Create a Bootstrap modal with input fields
+      let modalHtml = `<div class="modal fade" id="inputModal-${rowIndex}" tabindex="-1" role="dialog">`;
+      modalHtml += '<div class="modal-dialog" role="document"><div class="modal-content"><div class="modal-header">';
+      modalHtml += '<h5 class="modal-title">Edit Row</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">';
+      modalHtml += '<span aria-hidden="true"></span></button></div><div class="modal-body">';
+    // console.log("made modal");  
+    // For each object in the rowData array, create an input field
+    rowData.forEach((data, index) => {
+        const inputId = `input-${index}-${rowIndex}`;
+        const inputValue = data.value || "";
+        const inputType = data.seen ? (data.editable ? (data.dropDown ? "select" : "text") : "text") : "hidden";
+        const inputDisabled = data.seen && !data.editable ? "disabled" : "";
+        const inputClass = data.seen ? 'class="form-control bg-light"' : "";
+
+        modalHtml += `<label for="${inputId}" class="fw-bold">${data.label || ""}</label>`;
+        if(inputType === "select"){
+            modalHtml += `<select ${inputClass} id="${inputId}">`;
+            data.dropDown.forEach(option => {
+                modalHtml += `<option value="${option}" ${option === inputValue ? 'selected' : ''}>${option}</option>`;
+            });
+            modalHtml += `</select>`;
+        } else {
+            modalHtml += `<input type="${inputType}" ${inputClass} id="${inputId}" value="${inputValue}" ${inputDisabled}>`;
+        }
+    });
+
+      modalHtml += `</div><div class="modal-footer"><button type="button" class="btn btn-secondary" id="closeBtn-${rowIndex}" data-bs-dismiss="modal">Close</button>`;
+      modalHtml += `<button type="button" id="saveChangesBtn-${rowIndex}" class="btn btn-primary">Save changes</button></div></div></div></div>`;
+
+      // Append the modal to the body and show it
+      $('body').append(modalHtml);
+      $(`#inputModal-${rowIndex}`).modal('show');
+
+      $(`#closeBtn-${rowIndex}, #inputModal-${rowIndex} .btn-close`).off('click').click(function() {
+            console.log("in close btn listener");
+            reloadTable();
+            google.script.run.withSuccessHandler(()=> console.log("finished editting")).withFailureHandler(onFailure).finishEditing(rowIndex.toString());
+        }); 
+
+      // When the "Save changes" button is clicked
+      $(`#saveChangesBtn-${rowIndex}`).click(function() {
+        console.log("row index = " + rowIndex);
+        // Get the new row data from the input fields
+        let newRowData = rowData.map((data, index) => {
+          return ($(`#input-${index}-${rowIndex}`).val() || "");
+        });
+        $(`#inputModal-${rowIndex}`).modal('hide')
+
+        $("#loader").show();
+
+        // Call the server-side function to update the row
+        google.script.run.withSuccessHandler(()=>{
+            google.script.run.withSuccessHandler(reloadData)
+            .withFailureHandler(onFailure)
+            .getData($("#title").text());    
+        }).withFailureHandler(onFailure)
+        .updateRow(rowIndex, newRowData,$("#title").text());
+
+        google.script.run.withFailureHandler(onFailure)
+            .checkStatusChange(newRowData);
+        
+      });
+    })
+    .withFailureHandler(onFailure)
+    .actionExecution(rowIndex,$("#title").text());
+};
+
+function onSuccessGetData(result) {
+      result = JSON.parse(result);
+    //   console.log("result's length:")
+    //   console.log(result.values.length);
+      showData(result.values, result.hasOwnProperty("searchPanesColumns") ? result.searchPanesColumns : false);
+      $("#loader").hide();
+
+      formatButtons();
+    };
+
+function reloadData(data){
+    console.log("in reloadData");
+    data = JSON.parse(data);
+    var table = $("#data-table").DataTable();
+    table.clear().rows.add(data.values.slice(1)).draw(); // clear the old data, add the new data, then redraw the table
+    $("#loader").hide();
+
+    formatButtons();
+}
+
+function formatButtons() {
+    // Use event delegation to attach click event to .calibration-button
+    $('#data-table').on('click', '.calibration-button', function() {
+        let row = $(this).parent().siblings().map(function() {
+            return $(this).text();
+        }).get();
+        google.script.run.withSuccessHandler(function(url) {
+            window.open(url, '_blank');
+        }).generateFormReliability(row);
+    });
+
+    // Use event delegation to attach click event to .sop-button
+    $('#data-table').on('click', '.sop-button', function() {
+        let modalHtml = `<div class="modal fade" id="inputModal-sop" tabindex="-1" role="dialog">`;
+        modalHtml += '<div class="modal-dialog" role="document"><div class="modal-content"><div class="modal-header">';
+        modalHtml += '<h5 class="modal-title">Change SOP Request</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">';
+        modalHtml += '<span aria-hidden="true"></span></button></div><div class="modal-body">';
+        modalHtml += '<label for="change-doc" class="form-label">What document would you like to change?</label>';
+        modalHtml += '<input type="text" class="form-control" id="change-doc">';
+        modalHtml += '<label for="change" class="form-label">What would you like to change?</label>';
+        modalHtml += '<input type="text" class="form-control" id="change">';
+        modalHtml += `</div><div class="modal-footer"><button type="button" class="btn btn-secondary" id="closeBtn-sop" data-bs-dismiss="modal">Close</button>`;
+        modalHtml += `<button type="button" id="saveChangesBtn-sop" class="btn btn-primary">Save changes</button></div></div></div></div>`;
+
+        $('body').append(modalHtml);
+        $(`#inputModal-sop`).modal('show');
+
+        let row = $(this).parent().siblings().map(function() {
+            return $(this).text();
+        }).get();
+        $(`#closeBtn-sop, #inputModal-sop .btn-close`).off('click').click(function() {
+            reloadTable();
+            google.script.run.withSuccessHandler(()=> console.log("finished editing")).withFailureHandler(onFailure).finishEditing(rowIndex.toString());
+        });
+        $(`#saveChangesBtn-sop`).click(function() {
+            var documentToChange = $("#change-doc").val();
+            var change = $("#change").val();
+            if(!documentToChange || !change){
+                onFailure({message: "Please fill out all fields."});
+                return;
+            }
+
+            $(`#inputModal-sop`).modal('hide');
+            $("#loader").show();
+            google.script.run.withSuccessHandler(()=>$("#loader").hide())
+                .withFailureHandler(onFailure)
+                .sendSOPRequest(row, documentToChange, change);                
+        });
+    });
+}
+
+
+</script>
